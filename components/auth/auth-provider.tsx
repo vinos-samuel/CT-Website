@@ -17,107 +17,41 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Cache for user roles to reduce API calls
-const userRoleCache = new Map<string, { role: string | null; timestamp: number }>()
-
-// Cache expiration time (10 minutes)
-const CACHE_EXPIRATION = 10 * 60 * 1000
-
-// Default role to use when role fetching fails
-const DEFAULT_ROLE = "viewer"
-
-// Maximum number of retries for network failures
-const MAX_RETRIES = 2
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
   const router = useRouter()
 
   // Create the Supabase client only once
   const supabase = createClient()
 
-  // Fetch user role function with error handling, caching, and retries
-  const fetchUserRole = async (userId: string, retryCount = 0): Promise<string | null> => {
+  // Simple role fetching without retries to avoid SSR issues
+  const fetchUserRole = async (userId: string): Promise<string | null> => {
     try {
-      // Check cache first
-      const cachedData = userRoleCache.get(userId)
-      const now = Date.now()
+      const { data, error } = await supabase.from("user_roles").select("role").eq("id", userId).maybeSingle()
 
-      if (cachedData && now - cachedData.timestamp < CACHE_EXPIRATION) {
-        console.log("Using cached role for user", userId)
-        return cachedData.role
+      if (error || !data) {
+        return "viewer" // Default role
       }
 
-      // If not in cache or expired, fetch from API
-      console.log("Fetching role for user", userId)
-
-      // Use maybeSingle() instead of single() to handle the case where no row is found
-      const { data, error, status } = await supabase.from("user_roles").select("role").eq("id", userId).maybeSingle()
-
-      // Handle rate limiting explicitly
-      if (status === 429) {
-        console.warn("Rate limited when fetching user role. Using default role.")
-        return DEFAULT_ROLE
-      }
-
-      if (error) {
-        console.error("Error fetching user role:", error)
-        // If the error is that no rows were found, return a default role
-        if (error.message.includes("no rows")) {
-          console.warn("No role found for user. Using default role.")
-          return DEFAULT_ROLE
-        }
-
-        // For other errors, try to retry if we haven't exceeded the max retries
-        if (retryCount < MAX_RETRIES) {
-          console.warn(`Retrying role fetch (${retryCount + 1}/${MAX_RETRIES})...`)
-          // Exponential backoff: wait longer between each retry
-          await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, retryCount)))
-          return fetchUserRole(userId, retryCount + 1)
-        }
-
-        return DEFAULT_ROLE
-      }
-
-      const role = data?.role || DEFAULT_ROLE
-
-      // Cache the result
-      userRoleCache.set(userId, { role, timestamp: now })
-
-      return role
+      return data.role || "viewer"
     } catch (err) {
-      console.error("Exception when fetching user role:", err)
-
-      // For network errors, try to retry if we haven't exceeded the max retries
-      if (
-        err instanceof Error &&
-        (err.message.includes("Failed to fetch") ||
-          err.message.includes("Network") ||
-          err.message.includes("ECONNREFUSED")) &&
-        retryCount < MAX_RETRIES
-      ) {
-        console.warn(`Network error, retrying role fetch (${retryCount + 1}/${MAX_RETRIES})...`)
-        // Exponential backoff: wait longer between each retry
-        await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, retryCount)))
-        return fetchUserRole(userId, retryCount + 1)
-      }
-
-      // If we get a "Too Many Requests" error, use a default role
-      if (err instanceof Error && err.message.includes("Too Many R")) {
-        console.warn("Rate limited. Using default role.")
-        return DEFAULT_ROLE
-      }
-
-      // For any other error or if we've exceeded retries, return the default role
-      return DEFAULT_ROLE
+      console.error("Error fetching user role:", err)
+      return "viewer" // Default role
     }
   }
 
   useEffect(() => {
-    let mounted = true
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+
+    let isMounted = true
 
     const getSession = async () => {
       try {
@@ -130,29 +64,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (error) {
           console.error("Error getting session:", error)
-          if (mounted) {
+          if (isMounted) {
             setIsLoading(false)
           }
           return
         }
 
-        if (session && mounted) {
+        if (session && isMounted) {
           setSession(session)
           setUser(session.user)
 
           // Fetch user role
           const role = await fetchUserRole(session.user.id)
-          if (mounted) {
+          if (isMounted) {
             setUserRole(role)
           }
         }
 
-        if (mounted) {
+        if (isMounted) {
           setIsLoading(false)
         }
       } catch (err) {
         console.error("Exception in getSession:", err)
-        if (mounted) {
+        if (isMounted) {
           setIsLoading(false)
         }
       }
@@ -160,59 +94,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     getSession()
 
-    // Set up auth state change listener with debouncing
-    let authChangeTimeout: NodeJS.Timeout | null = null
-
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return
+      if (!isMounted) return
 
-      console.log("Auth state change:", event, session?.user?.email)
+      setSession(session)
+      setUser(session?.user ?? null)
 
-      // Clear any pending timeout
-      if (authChangeTimeout) {
-        clearTimeout(authChangeTimeout)
+      if (session?.user) {
+        const role = await fetchUserRole(session.user.id)
+        if (isMounted) {
+          setUserRole(role)
+        }
+      } else if (isMounted) {
+        setUserRole(null)
       }
 
-      // Debounce auth state changes
-      authChangeTimeout = setTimeout(async () => {
-        setSession(session)
-        setUser(session?.user ?? null)
-
-        if (session?.user) {
-          // Fetch user role when auth state changes
-          const role = await fetchUserRole(session.user.id)
-          if (mounted) {
-            setUserRole(role)
-          }
-        } else if (mounted) {
-          setUserRole(null)
-        }
-
-        router.refresh()
-      }, 300) // 300ms debounce
+      router.refresh()
     })
 
     return () => {
-      mounted = false
+      isMounted = false
       subscription.unsubscribe()
-
-      // Clear any pending timeout on cleanup
-      if (authChangeTimeout) {
-        clearTimeout(authChangeTimeout)
-      }
     }
-  }, [router, supabase])
+  }, [mounted, router, supabase])
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
-
-      console.log("Sign in result:", { data, error })
 
       return { error }
     } catch (err) {
@@ -223,16 +136,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      // Clear the role cache on sign out
-      if (user?.id) {
-        userRoleCache.delete(user.id)
-      }
-
       await supabase.auth.signOut()
       router.push("/admin/login")
     } catch (err) {
       console.error("Exception during sign out:", err)
     }
+  }
+
+  // Don't render anything until mounted to avoid hydration issues
+  if (!mounted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    )
   }
 
   const value = {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from "@/components/auth/auth-provider"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -9,12 +9,17 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle, CheckCircle, XCircle } from "lucide-react"
 
 export default function AdminDebug() {
+  const [mounted, setMounted] = useState(false)
   const { user, session, isLoading, userRole } = useAuth()
   const [checkingRole, setCheckingRole] = useState(false)
   const [roleStatus, setRoleStatus] = useState<"checking" | "found" | "not-found" | "fixed" | "error" | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const supabase = createClient()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const checkAndFixRole = async () => {
     if (!user) return
@@ -56,6 +61,14 @@ export default function AdminDebug() {
     }
   }
 
+  if (!mounted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
   return (
     <div className="container py-8">
       <h1 className="text-3xl font-bold mb-8">Authentication Debug</h1>
@@ -71,7 +84,7 @@ export default function AdminDebug() {
               <p>Loading authentication state...</p>
             ) : user ? (
               <div className="space-y-4">
-                <Alert variant="success">
+                <Alert>
                   <CheckCircle className="h-4 w-4" />
                   <AlertTitle>Authenticated</AlertTitle>
                   <AlertDescription>You are currently logged in.</AlertDescription>
@@ -126,7 +139,7 @@ export default function AdminDebug() {
               {roleStatus === "checking" && <p>Checking role status...</p>}
 
               {roleStatus === "found" && (
-                <Alert variant="success">
+                <Alert>
                   <CheckCircle className="h-4 w-4" />
                   <AlertTitle>Role Found</AlertTitle>
                   <AlertDescription>
@@ -136,7 +149,7 @@ export default function AdminDebug() {
               )}
 
               {roleStatus === "not-found" && (
-                <Alert variant="warning">
+                <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>No Role Found</AlertTitle>
                   <AlertDescription>
@@ -146,7 +159,7 @@ export default function AdminDebug() {
               )}
 
               {roleStatus === "fixed" && (
-                <Alert variant="success">
+                <Alert>
                   <CheckCircle className="h-4 w-4" />
                   <AlertTitle>Role Added</AlertTitle>
                   <AlertDescription>

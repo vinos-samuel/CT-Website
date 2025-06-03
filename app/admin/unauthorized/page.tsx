@@ -5,9 +5,23 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { AlertTriangle } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/components/auth/auth-provider"
+import { useEffect, useState } from "react"
 
 export default function UnauthorizedPage() {
+  const [mounted, setMounted] = useState(false)
   const { signOut } = useAuth()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="container flex items-center justify-center min-h-[calc(100vh-4rem)] py-8">
