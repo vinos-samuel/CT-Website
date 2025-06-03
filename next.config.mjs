@@ -4,7 +4,6 @@ const nextConfig = {
   swcMinify: true,
   experimental: {
     serverComponentsExternalPackages: ['@supabase/supabase-js'],
-    optimizeCss: false,
   },
   eslint: {
     ignoreDuringBuilds: true,
@@ -37,20 +36,14 @@ const nextConfig = {
     '@radix-ui/react-toast',
     '@radix-ui/react-toggle',
     '@radix-ui/react-tooltip',
+    '@radix-ui/react-label',
+    '@radix-ui/react-tabs',
     'class-variance-authority',
     'clsx',
     'lucide-react',
     'tailwind-merge',
     'tailwindcss-animate',
   ],
-  // Ensure CSS is properly processed
-  webpack: (config) => {
-    config.module.rules.push({
-      test: /\.css$/i,
-      use: ['style-loader', 'css-loader', 'postcss-loader'],
-    });
-    return config;
-  },
 }
 
 export default nextConfig
