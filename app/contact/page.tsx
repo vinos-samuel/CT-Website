@@ -139,8 +139,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="font-medium">Email</h3>
-                    <p className="text-sm text-muted-foreground">info@workforcehub.com</p>
-                    <p className="text-sm text-muted-foreground">support@workforcehub.com</p>
+                    <p className="text-sm text-muted-foreground">vinos.samuel@gmail.com</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">

@@ -1,54 +1,38 @@
 "use client"
 
 import type React from "react"
-
-import { useEffect } from "react"
+import { useAuth } from "./auth-context"
 import { useRouter } from "next/navigation"
-import { useAuth } from "./auth-provider"
+import { useEffect } from "react"
 
 interface RequireAuthProps {
   children: React.ReactNode
-  requiredRole?: "admin" | "editor" | "viewer"
 }
 
-export function RequireAuth({ children, requiredRole = "admin" }: RequireAuthProps) {
-  const { user, isLoading, userRole } = useAuth()
+export function RequireAuth({ children }: RequireAuthProps) {
+  const { isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    // Only redirect after loading is complete and we know there's no user
-    if (!isLoading && !user) {
+    if (!isLoading && !isAuthenticated) {
       router.push("/admin/login")
-    } else if (!isLoading && user && userRole && requiredRole) {
-      // Check if user has required role
-      const roleHierarchy = { admin: 3, editor: 2, viewer: 1 }
-      const userRoleValue = roleHierarchy[userRole as keyof typeof roleHierarchy] || 0
-      const requiredRoleValue = roleHierarchy[requiredRole] || 0
-
-      if (userRoleValue < requiredRoleValue) {
-        router.push("/admin/unauthorized")
-      }
     }
-  }, [isLoading, user, router, userRole, requiredRole])
+  }, [isAuthenticated, isLoading, router])
 
-  // Show nothing while loading
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading...</p>
+        </div>
       </div>
     )
   }
 
-  // If not loading and we have a user, render children
-  if (!isLoading && user) {
-    return <>{children}</>
+  if (!isAuthenticated) {
+    return null
   }
 
-  // Default case - loading or redirecting
-  return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-    </div>
-  )
+  return <>{children}</>
 }

@@ -1,3 +1,5 @@
+"use client"
+
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
@@ -38,15 +40,13 @@ export default function HeroSection() {
                 <p className="text-slate-300 mb-6">
                   Get instant answers to your contingent workforce questions with our AI-powered chatbot.
                 </p>
-                <a
-                  href="https://chatgpt.com/g/g-3Ao2PgYWi-non-employee-workforce-advisor"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Button
+                  className="w-full md:w-auto"
+                  variant="secondary"
+                  onClick={() => window.dispatchEvent(new CustomEvent("toggle-chatbot"))}
                 >
-                  <Button className="w-full md:w-auto" variant="secondary">
-                    Ask a Question
-                  </Button>
-                </a>
+                  Ask a Question
+                </Button>
               </div>
             </div>
           </div>

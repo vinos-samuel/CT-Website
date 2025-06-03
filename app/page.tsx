@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { FileText, Globe, Users } from "lucide-react"
+import { FileText, Globe, Users, Settings, BarChart, Laptop, FileCodeIcon as FileContract } from "lucide-react"
 import HeroSection from "@/components/hero-section"
 import FeaturedCountries from "@/components/featured-countries"
 
@@ -21,7 +21,7 @@ export default function Home() {
               </p>
             </div>
           </div>
-          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
+          <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-8">
             <div className="flex flex-col items-center space-y-2 rounded-lg border p-6">
               <div className="rounded-full bg-primary/10 p-3">
                 <Globe className="h-6 w-6 text-primary" />
@@ -55,6 +55,54 @@ export default function Home() {
                 Strategies to identify and mitigate risks associated with contingent workforce.
               </p>
               <Link href="/articles/risk-management" className="text-primary hover:underline text-sm mt-2">
+                Learn More
+              </Link>
+            </div>
+            <div className="flex flex-col items-center space-y-2 rounded-lg border p-6">
+              <div className="rounded-full bg-primary/10 p-3">
+                <Settings className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold">Operations Management</h3>
+              <p className="text-center text-sm text-slate-500">
+                Best practices for managing day-to-day operations of your contingent workforce program.
+              </p>
+              <Link href="/articles/operations-management" className="text-primary hover:underline text-sm mt-2">
+                Learn More
+              </Link>
+            </div>
+            <div className="flex flex-col items-center space-y-2 rounded-lg border p-6">
+              <div className="rounded-full bg-primary/10 p-3">
+                <BarChart className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold">Workforce Planning</h3>
+              <p className="text-center text-sm text-slate-500">
+                Strategic approaches to planning and forecasting your contingent workforce needs.
+              </p>
+              <Link href="/articles/workforce-planning" className="text-primary hover:underline text-sm mt-2">
+                Learn More
+              </Link>
+            </div>
+            <div className="flex flex-col items-center space-y-2 rounded-lg border p-6">
+              <div className="rounded-full bg-primary/10 p-3">
+                <Laptop className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold">Tools & Technology</h3>
+              <p className="text-center text-sm text-slate-500">
+                Technology solutions to streamline and optimize your contingent workforce management.
+              </p>
+              <Link href="/articles/tools-technology" className="text-primary hover:underline text-sm mt-2">
+                Learn More
+              </Link>
+            </div>
+            <div className="flex flex-col items-center space-y-2 rounded-lg border p-6">
+              <div className="rounded-full bg-primary/10 p-3">
+                <FileContract className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold">SOW</h3>
+              <p className="text-center text-sm text-slate-500">
+                Guidelines for creating effective Statements of Work for project-based engagements.
+              </p>
+              <Link href="/articles/sow" className="text-primary hover:underline text-sm mt-2">
                 Learn More
               </Link>
             </div>

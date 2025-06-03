@@ -1,10 +1,14 @@
 import type React from "react"
-import { AuthProvider } from "@/components/auth/auth-provider"
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return <AuthProvider>{children}</AuthProvider>
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        backgroundColor: "#f8f9fa",
+      }}
+    >
+      {children}
+    </div>
+  )
 }
