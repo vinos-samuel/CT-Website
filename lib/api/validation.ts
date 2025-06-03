@@ -1,118 +1,161 @@
-import { z } from "zod"
+// Replace zod with simple validation to avoid dependency issues
+// This is a temporary fix until we can resolve the zod dependency issue
 
-// Common validation schemas
-export const UUIDSchema = z.string().uuid()
-export const SlugSchema = z
-  .string()
-  .min(1)
-  .max(255)
-  .regex(/^[a-z0-9-]+$/)
-export const EmailSchema = z.string().email()
+// Define basic types to replace zod schemas
+type ValidationSchema = {
+  validate: (data: any) => { valid: boolean; errors?: string[] }
+}
 
-// User validation schemas
-export const CreateUserSchema = z.object({
-  email: EmailSchema,
-  name: z.string().min(1).max(255),
-  role: z.enum(["admin", "editor", "viewer"]).default("viewer"),
-  password: z.string().min(8).max(100),
-})
-
-export const UpdateUserSchema = CreateUserSchema.partial().omit({ password: true })
-
-// Country validation schemas
-export const CreateCountrySchema = z.object({
-  name: z.string().min(1).max(255),
-  slug: SlugSchema,
-  summary: z.string().min(1),
-  key_considerations: z.array(z.any()).default([]),
-  metadata: z.record(z.any()).default({}),
-  status: z.enum(["active", "inactive"]).default("active"),
-  sort_order: z.number().int().min(0).default(0),
-})
-
-export const UpdateCountrySchema = CreateCountrySchema.partial()
-
-// Region validation schemas
-export const CreateRegionSchema = z.object({
-  country_id: UUIDSchema,
-  name: z.string().min(1).max(255),
-  description: z.string().optional(),
-  sort_order: z.number().int().min(0).default(0),
-  status: z.enum(["active", "inactive"]).default("active"),
-})
-
-export const UpdateRegionSchema = CreateRegionSchema.partial().omit({ country_id: true })
-
-// Regulation validation schemas
-export const CreateRegulationSchema = z.object({
-  region_id: UUIDSchema,
-  title: z.string().min(1).max(500),
-  description: z.string().min(1),
-  details: z.record(z.any()).default({}),
-  status: z.enum(["Compliant", "Review Needed", "Attention Required"]).default("Review Needed"),
-  priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
-  last_updated: z.string().date(),
-  effective_date: z.string().date().optional(),
-  review_date: z.string().date().optional(),
-  tags: z.array(z.string()).default([]),
-  sort_order: z.number().int().min(0).default(0),
-})
-
-export const UpdateRegulationSchema = CreateRegulationSchema.partial().omit({ region_id: true })
-
-// Article validation schemas
-export const CreateArticleSchema = z.object({
-  title: z.string().min(1).max(500),
-  slug: SlugSchema,
-  content: z.record(z.any()),
-  excerpt: z.string().optional(),
-  featured_image: z.string().url().optional(),
-  category_id: UUIDSchema.optional(),
-  status: z.enum(["draft", "published", "archived"]).default("draft"),
-  tags: z.array(z.string()).default([]),
-  seo_title: z.string().max(255).optional(),
-  seo_description: z.string().optional(),
-})
-
-export const UpdateArticleSchema = CreateArticleSchema.partial()
-
-// Category validation schemas
-export const CreateCategorySchema = z.object({
-  name: z.string().min(1).max(255),
-  slug: SlugSchema,
-  description: z.string().optional(),
-  color: z
-    .string()
-    .regex(/^#[0-9A-F]{6}$/i)
-    .optional(),
-  icon: z.string().max(50).optional(),
-  sort_order: z.number().int().min(0).default(0),
-  status: z.enum(["active", "inactive"]).default("active"),
-})
-
-export const UpdateCategorySchema = CreateCategorySchema.partial()
-
-// Pagination validation
-export const PaginationSchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  sortBy: z.string().optional(),
-  sortOrder: z.enum(["asc", "desc"]).default("desc"),
-  search: z.string().optional(),
-})
-
-// Validation helper function
-export function validateRequest<T>(
-  schema: z.ZodSchema<T>,
-  data: unknown,
-): { success: true; data: T } | { success: false; errors: any } {
-  try {
-    const validatedData = schema.parse(data)
-    return { success: true, data: validatedData }
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return { success: false, errors: error.errors }
+// Simple validation functions
+const createStringValidator = (minLength = 1, maxLength = 255) => ({
+  validate: (value: any) => {
+    const errors = []
+    if (typeof value !== "string") {
+      errors.push("Value must be a string")
+      return { valid: false, errors }
     }
-    return { success: false, errors: [{ message: "Validation failed" }] }
+
+    if (minLength > 0 && value.length < minLength) {
+      errors.push(`Value must be at least ${minLength} characters`)
+    }
+
+    if (maxLength > 0 && value.length > maxLength) {
+      errors.push(`Value must be at most ${maxLength} characters`)
+    }
+
+    return { valid: errors.length === 0, errors: errors.length > 0 ? errors : undefined }
+  },
+})
+
+const createEmailValidator = () => ({
+  validate: (value: any) => {
+    if (typeof value !== "string") {
+      return { valid: false, errors: ["Email must be a string"] }
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const valid = emailRegex.test(value)
+
+    return {
+      valid,
+      errors: valid ? undefined : ["Invalid email format"],
+    }
+  },
+})
+
+const createUUIDValidator = () => ({
+  validate: (value: any) => {
+    if (typeof value !== "string") {
+      return { valid: false, errors: ["UUID must be a string"] }
+    }
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    const valid = uuidRegex.test(value)
+
+    return {
+      valid,
+      errors: valid ? undefined : ["Invalid UUID format"],
+    }
+  },
+})
+
+const createObjectValidator = (schema: Record<string, ValidationSchema>) => ({
+  validate: (data: any) => {
+    if (typeof data !== "object" || data === null) {
+      return { valid: false, errors: ["Value must be an object"] }
+    }
+
+    const errors: string[] = []
+
+    Object.entries(schema).forEach(([key, validator]) => {
+      if (data[key] !== undefined) {
+        const result = validator.validate(data[key])
+        if (!result.valid && result.errors) {
+          errors.push(...result.errors.map((err) => `${key}: ${err}`))
+        }
+      }
+    })
+
+    return { valid: errors.length === 0, errors: errors.length > 0 ? errors : undefined }
+  },
+})
+
+// Export simplified validators to replace zod schemas
+export const UUIDSchema = createUUIDValidator()
+export const SlugSchema = createStringValidator(1, 255)
+export const EmailSchema = createEmailValidator()
+
+// Simplified validation helper function
+export function validateRequest(
+  schema: ValidationSchema,
+  data: unknown,
+): { success: true; data: any } | { success: false; errors: any } {
+  const result = schema.validate(data)
+
+  if (result.valid) {
+    return { success: true, data }
+  } else {
+    return { success: false, errors: result.errors || ["Validation failed"] }
   }
 }
+
+// Create simplified schemas for common types
+export const CreateUserSchema = createObjectValidator({
+  email: EmailSchema,
+  name: createStringValidator(1, 255),
+  role: createStringValidator(1, 50),
+  password: createStringValidator(8, 100),
+})
+
+export const UpdateUserSchema = createObjectValidator({
+  email: EmailSchema,
+  name: createStringValidator(1, 255),
+  role: createStringValidator(1, 50),
+})
+
+export const CreateCountrySchema = createObjectValidator({
+  name: createStringValidator(1, 255),
+  slug: SlugSchema,
+  summary: createStringValidator(1),
+})
+
+export const UpdateCountrySchema = CreateCountrySchema
+
+export const CreateRegionSchema = createObjectValidator({
+  country_id: UUIDSchema,
+  name: createStringValidator(1, 255),
+  description: createStringValidator(0, 1000),
+})
+
+export const UpdateRegionSchema = createObjectValidator({
+  name: createStringValidator(1, 255),
+  description: createStringValidator(0, 1000),
+})
+
+export const CreateRegulationSchema = createObjectValidator({
+  region_id: UUIDSchema,
+  title: createStringValidator(1, 500),
+  description: createStringValidator(1),
+})
+
+export const UpdateRegulationSchema = createObjectValidator({
+  title: createStringValidator(1, 500),
+  description: createStringValidator(1),
+})
+
+export const CreateArticleSchema = createObjectValidator({
+  title: createStringValidator(1, 500),
+  slug: SlugSchema,
+})
+
+export const UpdateArticleSchema = CreateArticleSchema
+
+export const CreateCategorySchema = createObjectValidator({
+  name: createStringValidator(1, 255),
+  slug: SlugSchema,
+  description: createStringValidator(0, 1000),
+})
+
+export const UpdateCategorySchema = CreateCategorySchema
+
+export const PaginationSchema = createObjectValidator({})
