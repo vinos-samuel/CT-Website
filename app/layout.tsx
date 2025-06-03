@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   title: "Contingent Workforce Management Hub",
   description:
     "A central hub for non-employee, contingent workforce management providing regulatory information, HR best practices, and consultancy resources.",
-    generator: 'v0.dev'
+  generator: "v0.dev",
 }
 
 export default function RootLayout({
@@ -23,6 +23,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Force CSS reload */}
+        <link rel="stylesheet" href="/globals.css" />
+      </head>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <div className="flex min-h-screen flex-col">
